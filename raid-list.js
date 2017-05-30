@@ -23,7 +23,20 @@ function generateSimplifiedRaidList(raidListsInfo) {
 		simpleRaidLists.push(`<label><input type="checkbox" value="${raidList.id}"> ${raidList.title}</label><br>`);
 	});
 
-	return simpleRaidLists.join("") + "<br>" + generateSubmitButton();
+	const x = simpleRaidLists.join("") + "<br>" + generateSubmitButton();
+	return `
+		<table>
+			<tr>
+				<td style="text-align: left">${x}</td>
+				<td style="text-align: left; vertical-align: top">
+					Opakovat každých <input size="3" id="tbc-repeat-minutes"> minut<br>
+					<span id="tbc-repeating-rad-list-in-progress"></span><br>
+					<input type="button" id="tbc-reset-repeating-raid-list" value="reset">
+
+				</td>
+			</tr>
+		</table>
+	`;
 }
 
 function generateSubmitButton() {
@@ -43,8 +56,44 @@ function setSimpleRaidList(html) {
 }
 
 function submitSimpleRaidList() {
-	updateScheduledRaidLists(getSelectedSimpleRaidLists());
+	const selectedRaidLists = getSelectedSimpleRaidLists();
+	updateScheduledRaidLists(selectedRaidLists);
+
+	const minutes = getRepeatMinutes();
+
+	if (minutes) {
+		updateRepeatingRaidList(selectedRaidLists, minutes);
+	}
+
 	sendSimpleRaidList();
+}
+
+function getRepeatMinutes() {
+	const val = document.getElementById('tbc-repeat-minutes').value.toString().trim();
+	return parseInt(val || 0);
+}
+
+function updateRepeatingRaidList(selectedRaidLists, minutes) {
+	window.name = "tbc-repeating-raid-lists";
+
+	localStorage.setItem('tbc-repeating-raid-lists', JSON.stringify({
+		raidListIds: selectedRaidLists,
+		timestamp: Date.now(),
+		minutes: minutes
+	}));
+}
+
+function getRepeatingRaidList() {
+	if (window.name === 'tbc-repeating-raid-lists') {
+		try {
+			return JSON.parse(localStorage.getItem('tbc-repeating-raid-lists'));
+		} catch(err) {
+			console.error(err.message);
+			return null;
+		}
+	}
+
+	return null;
 }
 
 function getSelectedSimpleRaidLists() {
@@ -75,6 +124,13 @@ function getNextRaidList() {
 
 function initListeners() {
 	document.getElementById("tbc-submit-simple-raid-list").onclick = submitSimpleRaidList;
+	document.getElementById("tbc-reset-repeating-raid-list").onclick = resetRepeatingRaidList;
+}
+
+function resetRepeatingRaidList() {
+	updateScheduledRaidLists([]);
+	updateRepeatingRaidList([], 0);
+	window.location.reload();
 }
 
 function sendSimpleRaidList() {
@@ -128,13 +184,44 @@ function shouldSendNextRaidList() {
 	return getSchedulesRaidLists().length > 0;
 }
 
+function shouldSendRepeatingRaidList() {
+	const repeatingRaidLists = getRepeatingRaidList();
+	return repeatingRaidLists.raidListIds && repeatingRaidLists.raidListIds.length > 0 && repeatingRaidLists.minutes > 0;
+}
+
+function getNextRepeatingRaidListMsg(seconds) {
+	return `Příští FL pošlu za ${seconds} sekund.`;
+}
+
+function updateNextRepeatingRaidListMsg(msg) {
+	document.getElementById('tbc-repeating-rad-list-in-progress').innerText = msg;
+}
+
 if (document.getElementById("raidList")) {
 	if (shouldSendNextRaidList()) {
 		setTimeout(sendSimpleRaidList, Math.random() * 750);
 	} else {
+
 		var raidLists = getRaidLists();
 		var simpleRaidList = generateSimplifiedRaidList(raidLists);
 		setSimpleRaidList(simpleRaidList);
+
+		if (shouldSendRepeatingRaidList()) {
+			const repeatingRaidLists = getRepeatingRaidList();
+			let intervalInS = Math.floor(repeatingRaidLists.minutes * 60 * (Math.random() / 200 + 0.9));
+			const intervalInMs = intervalInS * 1000;
+			const msg = getNextRepeatingRaidListMsg(intervalInS);
+			updateNextRepeatingRaidListMsg(msg);
+
+			setInterval(function() {
+				updateNextRepeatingRaidListMsg(getNextRepeatingRaidListMsg(--intervalInS));
+			}, 1000);
+
+			setTimeout(function() {
+				updateScheduledRaidLists(repeatingRaidLists.raidListIds);
+				window.location.reload();
+			}, intervalInMs);
+
+		}
 	}
 }
-
