@@ -49,7 +49,7 @@ const RepeatingRaidList = {
 	},
 	scheduleRepeatingRaidList: () => {
 		const scheduledTimes = [];
-		const intervalInMs = RepeatingRaidList.getRepeatIntervalInMin() * 1 * 1000;
+		const intervalInMs = RepeatingRaidList.getRepeatIntervalInMin() * 60 * 1000;
 
 		for (let i = 1; i < RepeatingRaidList.getRepeatCount(); i++) {
 			const randomDeviance = Math.random() / 5 + 0.9;
@@ -69,6 +69,19 @@ const RepeatingRaidList = {
 		settings.times.shift();
 		WindowDatabase.setItem('tbc-repeating-raid-list', settings);
 		submitSimpleRaidList();
+	},
+	waitUntilNextWaveShouldBeSent: () => {
+		const infoBox = document.getElementById("tbc-repeating-info-box");
+		const repeatingTimes = RepeatingRaidList.getRepeatingRaidList().times;
+
+		const intervalId = setInterval(() => {
+			infoBox.innerText = `Další vlnu pošlu za ${Math.floor((repeatingTimes[0] - Date.now()) / 1000) + 1} sekund. Ještě zbývá poslat ${repeatingTimes.length} vln.`;
+
+			if (RepeatingRaidList.shouldSendNextWave()) {
+				clearInterval(intervalId);
+				window.location.reload();
+			}
+		}, 250);
 	}
 };
 
@@ -90,20 +103,30 @@ function getRaidLists() {
 	return raidListsInfo;
 }
 
-function generateSimplifiedRaidList(raidListsInfo) {
+function generateUberRaidList(raidListsInfo) {
 	const simpleRaidLists = [];
 	const lastSelectedRaidLists = getLastSelectedRaidLists();
+	const left = [];
+	const right = [];
 
-	raidListsInfo.forEach(function(raidList) {
+	raidListsInfo.forEach(function(raidList, index) {
 		let checked = '';
 		if (lastSelectedRaidLists.indexOf(raidList.id) !== -1) {
 			checked = ' checked';
 		}
 
-		simpleRaidLists.push(`<label><input type="checkbox" value="${raidList.id}"${checked}> ${raidList.title}</label><br>`);
+		const html = `<label><input type="checkbox" value="${raidList.id}"${checked}> ${raidList.title}</label><br>`;
+
+		if (index < raidListsInfo.length / 2) {
+			left.push(html);
+		} else {
+			right.push(html);
+		}
 	});
 
-	return `<div id="tbc-simple-raid-list-choices">` + simpleRaidLists.join("") + "</div>" + generateSubmitButton() + generateRepeatButton() + "<br>" + generateInformBox();
+	const html = `<div style="float:left; width: 50%">${left.join("")}</div><div style="float:right; width: 50%">${right.join("")}</div>`;
+
+	return `<div id="tbc-simple-raid-list-choices">${html}</div><div style="clear: both; padding: 10px 0">&nbsp;</div>${generateSubmitButton()}${generateRepeatButton()}${generateInformBox()}`;
 }
 
 function generateSubmitButton() {
@@ -246,32 +269,25 @@ function shouldSendNextRaidList() {
 	return getSchedulesRaidLists().length > 0;
 }
 
+function renderUberRaidList() {
+	const raidLists = getRaidLists();
+	const simpleRaidList = generateUberRaidList(raidLists);
+	setSimpleRaidList(simpleRaidList);
+}
+
 if (document.getElementById("raidList")) {
+	renderUberRaidList();
+
 	if (shouldSendNextRaidList()) {
 		const delay = (Math.random() * 1000) + 500;
 		console.log(`I'm sending next raid list in ${delay} ms`);
 		setTimeout(sendSimpleRaidList, delay);
 	} else {
-		var raidLists = getRaidLists();
-		var simpleRaidList = generateSimplifiedRaidList(raidLists);
-		setSimpleRaidList(simpleRaidList);
-
 		if (RepeatingRaidList.repeatingRaidListInProgress()) {
 			if (RepeatingRaidList.shouldSendNextWave()) {
 				RepeatingRaidList.sendFirstWave();
 			} else {
-				const infoBox = document.getElementById("tbc-repeating-info-box");
-				const repeatingTimes = RepeatingRaidList.getRepeatingRaidList().times;
-
-				setInterval(() => {
-					console.log("tick...");
-					infoBox.innerText = `Další vlnu pošlu za ${Math.floor((repeatingTimes[0] - Date.now()) / 1000) + 1} sekund. Ještě zbývá poslat ${repeatingTimes.length} vln.`;
-
-					if (RepeatingRaidList.shouldSendNextWave()) {
-						window.location.reload();
-					}
-				}, 250);
-
+				RepeatingRaidList.waitUntilNextWaveShouldBeSent();
 			}
 		}		
 	}
