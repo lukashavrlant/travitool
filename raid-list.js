@@ -126,7 +126,7 @@ function generateUberRaidList(raidListsInfo) {
 
 	const html = `<div style="float:left; width: 50%">${left.join("")}</div><div style="float:right; width: 50%">${right.join("")}</div>`;
 
-	return `<div class="round listTitle">Uber Raid List</div><div id="tbc-simple-raid-list-choices">${html}</div><div style="clear: both; padding: 10px 0">&nbsp;</div>${generateSubmitButton()}${generateRepeatButton()}<br>${generateInformBox()}`;
+	return `<div class="round listTitle">Uber Farmlist</div><div id="tbc-simple-raid-list-choices">${html}</div><div style="clear: both; padding: 10px 0">&nbsp;</div>${generateSubmitButton()}${generateRepeatButton()}<br>${generateInformBox()}`;
 }
 
 function generateSubmitButton() {
