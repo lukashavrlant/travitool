@@ -202,13 +202,7 @@ function getSchedulesRaidLists() {
 			return [];
 		}
 
-		if (Date.now() - data.timestamp > 5000) {
-			updateScheduledRaidLists([]);
-			return [];
-		} else {
-			return data.raidListIds;
-		}
-
+		return data.raidListIds;
 	} catch(err) {
 		console.log(err.message);
 		return [];
