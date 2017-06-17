@@ -3,7 +3,6 @@ const WindowDatabase = {
 		try {
 			return JSON.parse(window.name)[key];
 		} catch(err) {
-			console.error(`Cannot get ${key} from WindowDatabase`);
 			return null;
 		}
 	},
@@ -37,10 +36,15 @@ const RepeatingRaidList = {
 	getRepeatIntervalInMin: () => parseInt(document.getElementById("tbc-repeat-interval-in-m").value),
 	storeRepeatingRaidList: () => {
 		WindowDatabase.setItem('tbc-repeating-raid-list', {
-			count: parseInt(RepeatingRaidList.getRepeatCount()) - 1,
+			count: parseInt(RepeatingRaidList.getRepeatCount()),
 			intervalInMin: parseInt(RepeatingRaidList.getRepeatIntervalInMin()),
 			times: RepeatingRaidList.scheduleRepeatingRaidList()
 		})
+	},
+	resetRepeatingRaidLists: () => {
+		WindowDatabase.setItem('tbc-repeating-raid-list', null);
+		updateScheduledRaidLists([]);
+		reloadPage();
 	},
 	getRepeatingRaidList: () => WindowDatabase.getItem('tbc-repeating-raid-list') || null,
 	repeatingRaidListInProgress: () => {
@@ -51,9 +55,10 @@ const RepeatingRaidList = {
 		const scheduledTimes = [];
 		const intervalInMs = RepeatingRaidList.getRepeatIntervalInMin() * 60 * 1000;
 
-		for (let i = 1; i < RepeatingRaidList.getRepeatCount(); i++) {
-			const randomDeviance = Math.random() / 5 + 0.9;
-			scheduledTimes.push(Date.now() + (i * intervalInMs * randomDeviance));
+		for (let i = 1; i <= RepeatingRaidList.getRepeatCount(); i++) {
+			const randomDeviance = (Math.random() / 2.5) + 0.8;
+			const delay = Math.floor(i * intervalInMs * randomDeviance);
+			scheduledTimes.push(Date.now() + delay);
 		}
 
 		return scheduledTimes;
@@ -66,24 +71,31 @@ const RepeatingRaidList = {
 	},
 	sendFirstWave: () => {
 		const settings = RepeatingRaidList.getRepeatingRaidList();
-		settings.times.shift();
+		const now = Date.now();
+		settings.times = settings.times.filter(time => time > now);
 		WindowDatabase.setItem('tbc-repeating-raid-list', settings);
 		submitSimpleRaidList();
 	},
 	waitUntilNextWaveShouldBeSent: () => {
 		const infoBox = document.getElementById("tbc-repeating-info-box");
 		const repeatingTimes = RepeatingRaidList.getRepeatingRaidList().times;
+		document.getElementById("tbc-repeating-raid-list-in-progress-box").style.display = "block";
+		document.getElementById("tbc-repeating-raid-list-settings").style.display = "none";
 
 		const intervalId = setInterval(() => {
-			infoBox.innerText = `Další vlnu pošlu za ${Math.floor((repeatingTimes[0] - Date.now()) / 1000) + 1} sekund. Ještě zbývá poslat ${repeatingTimes.length} vln.`;
+			infoBox.innerText = `Další vlna za ${Math.floor((repeatingTimes[0] - Date.now()) / 1000) + 1} sekund. Zbývá poslat ${repeatingTimes.length} vln.`;
 
 			if (RepeatingRaidList.shouldSendNextWave()) {
 				clearInterval(intervalId);
-				window.location.reload();
+				reloadPage();
 			}
 		}, 250);
 	}
 };
+
+function reloadPage() {
+	window.location.reload();
+}
 
 function getRaidLists() {
 	var raidLists = document.getElements("#raidList .listEntry");
@@ -126,19 +138,23 @@ function generateUberRaidList(raidListsInfo) {
 
 	const html = `<div style="float:left; width: 50%">${left.join("")}</div><div style="float:right; width: 50%">${right.join("")}</div>`;
 
-	return `<div class="round listTitle">Uber Farmlist</div><div id="tbc-simple-raid-list-choices">${html}</div><div style="clear: both; padding: 10px 0">&nbsp;</div>${generateSubmitButton()}${generateRepeatButton()}<br>${generateInformBox()}`;
+	return `<div class="round listTitle">Uber Farmlist 1.1</div><div id="tbc-simple-raid-list-choices">${html}</div><div style="clear: both; padding: 10px 0">&nbsp;</div><div id="tbc-repeating-raid-list-settings">${generateSubmitButton()}${generateRepeatSettings()}</div><div id="tbc-repeating-raid-list-in-progress-box" style="display: none">${generateResetButton()}${generateInformBox()}</div>`;
 }
 
 function generateSubmitButton() {
 	return `<input type="submit" id="tbc-submit-simple-raid-list" value="Odeslat jednou" style="width: 175px">`;
 }
 
-function generateRepeatButton() {
-	return `<span id="tbc-repeat-settings-bar" style="padding-left: 25px;"><label><input type="checkbox" id="tbc-repeat-enabled">Opakovat</label> <span id="tbc-repeat-number-bar" style="display: none"><input type="number" id="tbc-repeat-count" style="width: 50px" value="4">krát co <input type="number" id="tbc-repeat-interval-in-m" style="width: 50px" value="15"> minut.</span></span>`;
+function generateResetButton() {
+	return `<input type="submit" id="tbc-reset-repeating-list" value="Reset" style="width: 175px">`;
+}
+
+function generateRepeatSettings() {
+	return `<span id="tbc-repeat-settings-bar" style="padding-left: 25px;"><label><input type="checkbox" id="tbc-repeat-enabled">Opakovat</label> <span id="tbc-repeat-number-bar" style="display: none"><input type="number" id="tbc-repeat-count" style="width: 50px" value="4">krát co <input type="number" id="tbc-repeat-interval-in-m" style="width: 50px" value="15"> minut. <br><span style="padding-left: 200px"><input type="checkbox" id="tbc-send-first-wave-immediately"> Poslat první vlnu hned</span></span></span>`;
 }
 
 function generateInformBox() {
-	return `<span id="tbc-repeating-info-box"></span>`;
+	return `<span id="tbc-repeating-info-box" style="padding-left: 25px;"></span>`;
 }
 
 function setSimpleRaidList(html) {
@@ -161,10 +177,16 @@ function submitSimpleRaidList() {
 }
 
 function submitRaidLists() {
-	submitSimpleRaidList();
-
 	if (RepeatingRaidList.isRepeatingRaidListEnabled()) {
 		RepeatingRaidList.storeRepeatingRaidList();
+
+		if (document.getElementById('tbc-send-first-wave-immediately').checked) {
+			submitSimpleRaidList();
+		} else {
+			reloadPage();
+		}
+	} else {
+		submitSimpleRaidList();
 	}
 }
 
@@ -196,7 +218,7 @@ function updateScheduledRaidLists(raidListIds) {
 
 function getSchedulesRaidLists() {
 	try {
-		var data = WindowDatabase.getItem(DATABASE_KEYS.scheduledRaidList);
+		var data = WindowDatabase.getItem(DATABASE_KEYS.scheduledRaidList) || {};
 
 		if (isNaN(data.timestamp)) {
 			return [];
@@ -220,6 +242,11 @@ function getNextRaidList() {
 function initListeners() {
 	document.getElementById("tbc-submit-simple-raid-list").onclick = submitRaidLists;
 	document.getElementById("tbc-repeat-enabled").onclick = toggleRepeatingRaidList;
+	document.getElementById("tbc-reset-repeating-list").onclick = resetRepeatingRaidLists;
+}
+
+function resetRepeatingRaidLists() {
+	RepeatingRaidList.resetRepeatingRaidLists();
 }
 
 function toggleRepeatingRaidList() {
@@ -283,6 +310,6 @@ if (document.getElementById("raidList")) {
 			} else {
 				RepeatingRaidList.waitUntilNextWaveShouldBeSent();
 			}
-		}		
+		}
 	}
 }
