@@ -138,7 +138,7 @@ function generateUberRaidList(raidListsInfo) {
 
 	const html = `<div style="float:left; width: 50%">${left.join("")}</div><div style="float:right; width: 50%">${right.join("")}</div>`;
 
-	return `<div class="round listTitle">Uber Farmlist 1.1</div><div id="tbc-simple-raid-list-choices">${html}</div><div style="clear: both; padding: 10px 0">&nbsp;</div><div id="tbc-repeating-raid-list-settings">${generateSubmitButton()}${generateRepeatSettings()}</div><div id="tbc-repeating-raid-list-in-progress-box" style="display: none">${generateResetButton()}${generateInformBox()}</div>`;
+	return `<div class="round listTitle">Uber Farmlist 1.2</div><div id="tbc-simple-raid-list-choices">${html}</div><div style="clear: both; padding: 10px 0">&nbsp;</div><div id="tbc-repeating-raid-list-settings">${generateSubmitButton()}${generateRepeatSettings()}</div><div id="tbc-repeating-raid-list-in-progress-box" style="display: none">${generateResetButton()}${generateInformBox()}</div>`;
 }
 
 function generateSubmitButton() {
@@ -146,11 +146,11 @@ function generateSubmitButton() {
 }
 
 function generateResetButton() {
-	return `<input type="submit" id="tbc-reset-repeating-list" value="Reset" style="width: 175px">`;
+	return `<input type="submit" id="tbc-reset-repeating-list" value="Přestaň posílat!" style="width: 175px">`;
 }
 
 function generateRepeatSettings() {
-	return `<span id="tbc-repeat-settings-bar" style="padding-left: 25px;"><label><input type="checkbox" id="tbc-repeat-enabled">Opakovat</label> <span id="tbc-repeat-number-bar" style="display: none"><input type="number" id="tbc-repeat-count" style="width: 50px" value="4">krát co <input type="number" id="tbc-repeat-interval-in-m" style="width: 50px" value="15"> minut. <br><span style="padding-left: 200px"><input type="checkbox" id="tbc-send-first-wave-immediately"> Poslat první vlnu hned</span></span></span>`;
+	return `<span id="tbc-repeat-settings-bar" style="padding-left: 25px;"><label><input type="checkbox" id="tbc-repeat-enabled">Opakovat</label> <span id="tbc-repeat-number-bar" style="display: none"><input type="number" id="tbc-repeat-count" style="width: 50px" value="4">krát co <input type="number" id="tbc-repeat-interval-in-m" style="width: 50px" value="15"> minut. <br><span style="padding-left: 200px"><label><input type="checkbox" id="tbc-send-first-wave-immediately"> Poslat první vlnu hned</label></span></span></span>`;
 }
 
 function generateInformBox() {
